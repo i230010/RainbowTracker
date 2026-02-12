@@ -1,2 +1,1 @@
-# RainbowTracker
-RainbowTracker Description
+RainbowTracker Project 0.1.0
