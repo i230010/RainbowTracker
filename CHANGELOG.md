@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented below.
 
+## [1.0.0]
+
+### Added
+
+- Location Changer
+
+### Miscellaneous
+- First Version >w<
+
 ## [0.2.0]
 
 ### Added
