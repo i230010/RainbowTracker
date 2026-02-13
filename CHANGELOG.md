@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented below.
 
+## [0.2.0]
+
+### Added
+
+- 3D Rendering of position of Sun and Moon
+- Time manipulation
+- Added the 'bows
+
 ## [0.1.1]
 
 ### Added

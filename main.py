@@ -5,7 +5,13 @@ This file includes the calculations for the position of the rainbow, 3d renderin
 """
 
 #Required modules
+import math
 from skyfield.api import load, GREGORIAN_START, wgs84, N, E
+import ursina as u
+import datetime
+
+def fmap(x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 def opposite_alt(deg: float) -> float:
     """
@@ -35,49 +41,26 @@ def opposite_az(deg: float) -> float:
     """
     return (deg - 180) % 360
 
-def main():
-    #Observers coordinates
-    lat: float = 3.14
-    lon: float = 101.6
-
-    print("RainbowTracker App Log(s):")
-
+def sunmoon_positions(lat: float, lon: float, dt):
     #Load Epehemerides
     eph = load("de421.bsp")
 
     #Load Timescale
     ts = load.timescale()
     ts.julian_calendar_cutoff = GREGORIAN_START
-    t = ts.now()
+    t = ts.from_datetime(dt)
 
     #Object positions in Geocentric and Localized
     earth, sun, moon = eph["earth"], eph["sun"], eph["moon"] #Geocentric
     observer = earth + wgs84.latlon(lat * N, lon * E) #Localized
 
-    #Sun's RaDec
-    sradec = earth.at(t).observe(sun).radec()
-    mradec = earth.at(t).observe(moon).radec()
+    #Apparent diameter
+    sang = math.degrees(math.asin(695700 / observer.at(t).observe(sun).apparent().distance().km))
+    mang = math.degrees(math.asin(1737.4 / observer.at(t).observe(moon).apparent().distance().km))
 
     #Moon's RaDec
     saltaz = observer.at(t).observe(sun).apparent().altaz()
     maltaz = observer.at(t).observe(moon).apparent().altaz()
-
-    print(f"Sun RaDec Skyfield: {sradec}")
-    print(f"Moon RaDec Skyfield: {mradec}")
-
-    print(f"Sun AltAz Skyfield: {saltaz}")
-    print(f"Moon AltAz Skyfield: {maltaz}")
-
-    #Sun's RaDec into Ra Dec Components
-    ra_sun: float = sradec[0].degrees
-    dec_sun: float = sradec[1].degrees
-
-    #Moon's RaDec into Ra Dec Components
-    ra_moon: float = mradec[0].degrees
-    dec_moon: float = mradec[1].degrees
-
-    print(f"RaDec Sun (deg): {ra_sun}, {dec_sun}")
-    print(f"RaDec Moon (deg): {ra_moon}, {dec_moon}")
 
     #Alt Az of Sun
     alt_sun: float = saltaz[0].degrees
@@ -87,17 +70,192 @@ def main():
     alt_moon: float = maltaz[0].degrees
     az_moon: float = maltaz[1].degrees
 
-    print(f"AltAz Sun (deg): {alt_sun}, {az_sun}")
-    print(f"AltAz Moon (deg): {alt_moon}, {az_moon}")
-
     #The position of rainbow and moonbow
     opposite_alt_sun: float = opposite_alt(alt_sun)
     opposite_az_sun: float = opposite_az(az_sun)
     opposite_alt_moon: float = opposite_alt(alt_moon)
     opposite_az_moon: float = opposite_az(az_moon)
 
-    print(f"Opposite of AltAz Sun (deg): {opposite_alt_sun}, {opposite_az_sun}")
-    print(f"Opposite of AltAz Moon (deg): {opposite_alt_moon}, {opposite_az_moon}")
+    return alt_sun, az_sun, alt_moon, az_moon, opposite_alt_sun, opposite_az_sun, opposite_alt_moon, opposite_az_moon, sang, mang
+
+stop = 1
+
+def main():
+    global now
+    now = datetime.datetime.now(datetime.UTC)
+
+    global sun
+    global moon
+    global gndrad #Ground Radius
+    global datetime_text
+    global rainbow1
+    global rainbow2
+    global moonbow1
+    global moonbow2
+
+    print("RainbowTracker App Log(s):")
+
+    #Ursina app
+    app = u.Ursina("RainbowTracker", "icon.ico")
+
+    #Ground scale
+    k = 50
+
+    #The ground
+    ground1 = u.Entity(model=u.Circle(100, thickness=10), scale=k, color=u.rgb(0,255,0), rotation_x=90, y=0)  # noqa: F841
+    ground2 = u.Entity(model=u.Circle(100, thickness=10), scale=k, color=u.rgb(0,255,0), rotation_x=-90, y=0)  # noqa: F841
+    gndrad = k/2
+
+    #sun
+    sun = u.Entity(
+        model='sphere',
+        color=u.rgb(255, 255, 0),
+        scale=k - (k-1)
+    )
+
+    #moon
+    moon = u.Entity(
+        model='sphere',
+        color=u.rgb(100, 100, 100),
+        scale=k - (k-1)
+    )
+    
+    #rainbow
+    rainbow1 = u.Entity(model=u.Circle(100, thickness=10), scale=k, color=u.rgb(0,255,128), rotation_x=0, y=0)  # noqa: F841
+    rainbow2 = u.Entity(model=u.Circle(100, thickness=10), scale=k, color=u.rgb(0,255,128), rotation_x=180, y=0)  # noqa: F841
+
+    #moonbow
+    moonbow1 = u.Entity(model=u.Circle(100, thickness=10), scale=k, color=u.rgb(128,128,128), rotation_x=0, y=0)  # noqa: F841
+    moonbow2 = u.Entity(model=u.Circle(100, thickness=10), scale=k, color=u.rgb(128,128,128), rotation_x=180, y=0)  # noqa: F841
+
+
+    #ui
+    u.Text.default_resolution = 1080 * u.Text.size
+    datetime_text = u.Text(
+        text="Datetime",
+        wordwrap=30,
+        color=u.rgb(0,0,0),
+        origin=(-0.5, -0.5),
+        position=(-.88, -.49)
+    )
+
+    u.Button(text='+ Sec', position=(-0.8, 0.45), scale=(0.15,0.08), on_click=add_second)
+    u.Button(text='- Sec', position=(-0.8, 0.35), scale=(0.15,0.08), on_click=sub_second)
+    u.Button(text='+ Min', position=(-0.8, 0.25), scale=(0.15,0.08), on_click=add_minute)
+    u.Button(text='- Min', position=(-0.8, 0.15), scale=(0.15,0.08), on_click=sub_minute)
+    u.Button(text='+ Hour', position=(-0.8, 0.05), scale=(0.15,0.08), on_click=add_hour)
+    u.Button(text='- Hour', position=(-0.8, -0.05), scale=(0.15,0.08), on_click=sub_hour)
+    u.Button(text='Now', position=(-0.8, -0.15), scale=(0.15,0.08), on_click=now_datetime)
+    u.Button(text='Stop', position=(-0.8, -0.25), scale=(0.15,0.08), on_click=stop_datetime)
+    x_input = u.InputField(default_value='0', label='Lat:', position=(-0.8, -0.35), scale=(0.1, 0.05))
+    y_input = u.InputField(default_value='0', label='Lon:', position=(-0.8, -0.42), scale=(0.1, 0.05))
+
+    ec = u.EditorCamera(rotation_speed=200, panning_speed=200)  # noqa: F841
+
+    app.run()  # ty:ignore[missing-argument]
+
+def add_second():
+    global now
+    now += datetime.timedelta(seconds=1)
+
+def add_minute():
+    global now
+    now += datetime.timedelta(seconds=60)
+
+def add_hour():
+    global now
+    now += datetime.timedelta(hours=1)
+
+def sub_second():
+    global now
+    now -= datetime.timedelta(seconds=1)
+
+def sub_minute():
+    global now
+    now -= datetime.timedelta(seconds=60)
+
+def sub_hour():
+    global now
+    now -= datetime.timedelta(hours=1)
+
+def now_datetime():
+    global now
+    now = datetime.datetime.now(datetime.UTC)
+
+def stop_datetime():
+    global stop
+    stop = not(stop)
+
+def update():
+    global now
+    salt, saz, malt, maz, osalt, osaz, omalt, omaz, sang, sang = sunmoon_positions(3.14, 101.6, now)
+    sun.scale = (gndrad*0.25) * sang
+    moon.scale = (gndrad*0.25) * sang
+    now += datetime.timedelta(seconds=1) * u.time.dt * stop  # smooth tick
+
+    datetime_text.text = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    #Sun AltAz
+    r = gndrad
+
+    alt_rad = math.radians(salt)
+    az_rad = math.radians(saz)
+
+    sun.x = r * math.cos(alt_rad) * math.sin(az_rad)
+    sun.y = r * math.sin(alt_rad)
+    sun.z = r * math.cos(alt_rad) * math.cos(az_rad)
+
+    #Moon AltAz
+    alt_rad = math.radians(malt)
+    az_rad = math.radians(maz)
+
+    moon.x = r * math.cos(alt_rad) * math.sin(az_rad)
+    moon.y = r * math.sin(alt_rad)
+    moon.z = r * math.cos(alt_rad) * math.cos(az_rad)
+
+    #Rainbow AltAz
+    r = gndrad
+
+    alt_rad = math.radians(osalt)
+    az_rad = math.radians(osaz)
+
+    rainbow1.x = r * math.cos(alt_rad) * math.sin(az_rad)
+    rainbow1.y = r * math.sin(alt_rad)
+    rainbow1.z = r * math.cos(alt_rad) * math.cos(az_rad)
+
+    rainbow1.rotation_y = osaz
+    rainbow1.rotation_x = -osalt
+    rainbow1.rotation_z = 0
+
+    rainbow2.x = r * math.cos(alt_rad) * math.sin(az_rad)
+    rainbow2.y = r * math.sin(alt_rad)
+    rainbow2.z = r * math.cos(alt_rad) * math.cos(az_rad)
+
+    rainbow2.rotation_y = osaz
+    rainbow2.rotation_x = -osalt + 180
+    rainbow2.rotation_z = 0
+
+    #Moonbow AltAz
+    r = gndrad
+
+    alt_rad = math.radians(omalt)
+    az_rad = math.radians(omaz)
+
+    moonbow1.x = r * math.cos(alt_rad) * math.sin(az_rad)
+    moonbow1.y = r * math.sin(alt_rad)
+    moonbow1.z = r * math.cos(alt_rad) * math.cos(az_rad)
+
+    moonbow1.rotation_y = omaz
+    moonbow1.rotation_x = -omalt
+    moonbow1.rotation_z = 0
+
+    moonbow2.x = r * math.cos(alt_rad) * math.sin(az_rad)
+    moonbow2.y = r * math.sin(alt_rad)
+    moonbow2.z = r * math.cos(alt_rad) * math.cos(az_rad)
+
+    moonbow2.rotation_y = omaz
+    moonbow2.rotation_x = -omalt + 180
+    moonbow2.rotation_z = 0
 
 if __name__ == "__main__":
     main()
