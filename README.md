@@ -11,7 +11,7 @@ The project uses **Skyfield** for astronomical calculations
 
 ## How to Run (.exe file)
 
-After you downloaded the folder and extracted, click the app.exe on the dist folder
+Go to the releases section, Download the latest version of the RainbowTrackerExecutable and click the `main.exe`
 
 ## How to Run (Raw python file)
 
