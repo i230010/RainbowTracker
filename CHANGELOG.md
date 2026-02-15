@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented below.
 
+## [1.1.0]
+
+### Added 
+
+- Compass
+
+### Miscellaneous
+
+- Added a .exe file for easy running
+- Rewrote the README
+
 ## [1.0.0]
 
 ### Added
