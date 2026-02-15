@@ -11,7 +11,7 @@ The project uses **Skyfield** for astronomical calculations
 
 ## How to Run (.exe file)
 
-Go to the releases section, Download the latest version of the RainbowTrackerExecutable and click the `main.exe`
+Go to the releases section, Download and extract the latest version of the `RainbowTrackerExecutable.zip` and click the `main.exe`
 
 ## How to Run (Raw python file)
 
@@ -26,3 +26,4 @@ uv run main.pyw
 ```
 
 After doing some changes and you want to convert back to a normal .exe file, use this command `pyinstaller main.pyw --onefile --windowed --collect-all panda3d --collect-all ursina` and put the `.ttf` and `.bsp` file in the dist folder
+
