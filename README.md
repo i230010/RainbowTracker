@@ -15,12 +15,14 @@ Go to the releases section, Download the latest version of the RainbowTrackerExe
 
 ## How to Run (Raw python file)
 
+Download the latest (or other releases from the Releases section and click on the source code)
+
 This project supports execution using **uv**, a fast Python package manager and runner.
 
-To run the main Eclipse computation script (on the folder):
+To run the main computation script (on the folder):
 
 ```bash
-uv run main.py
+uv run main.pyw
 ```
 
 After doing some changes and you want to convert back to a normal .exe file, use this command `pyinstaller main.pyw --onefile --windowed --collect-all panda3d --collect-all ursina` and put the `.ttf` and `.bsp` file in the dist folder
