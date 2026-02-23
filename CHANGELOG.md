@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented below.
 
+## [1.1.1]
+
+### Added 
+
+- Instructions
+- State that it supports Windows 11 ONLY
+
+### Miscellaneous
+
+- Recompiled the `.exe` file
+
 ## [1.1.0]
 
 ### Added 
